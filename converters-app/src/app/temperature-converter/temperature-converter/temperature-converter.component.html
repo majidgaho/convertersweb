@@ -1,0 +1,26 @@
+<div class="converter-container">
+    <h2>Temperature Converter</h2>
+  
+    <div class="input-group">
+      <mat-form-field appearance="outline">
+        <mat-label>Input Temperature</mat-label>
+        <input matInput type="number" [(ngModel)]="inputTemperature" (ngModelChange)="convert()">
+        <mat-select [(ngModel)]="inputUnit" (ngModelChange)="convert()">
+          <mat-option value="celsius">Celsius</mat-option>
+          <mat-option value="fahrenheit">Fahrenheit</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  
+    <div class="input-group">
+      <mat-form-field appearance="outline">
+        <mat-label>Output Temperature</mat-label>
+        <input matInput type="number" [(ngModel)]="outputTemperature" disabled>
+        <mat-select [(ngModel)]="outputUnit">
+          <mat-option value="celsius">Celsius</mat-option>
+          <mat-option value="fahrenheit">Fahrenheit</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+  

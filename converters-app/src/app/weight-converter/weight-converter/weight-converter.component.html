@@ -1,0 +1,32 @@
+<div class="converter-container">
+    <div class="converter-header">
+      <h2>Weight Converter</h2>
+    </div>
+  
+    <div class="converter-body">
+      <div class="input-section">
+        <h3>Input</h3>
+        <mat-form-field>
+          <input matInput type="number" [(ngModel)]="inputValue">
+          <mat-select [(value)]="inputUnit">
+            <mat-option *ngFor="let unit of weightUnits" [value]="unit">{{ unit }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+  
+      <div class="output-section">
+        <h3>Output</h3>
+        <mat-form-field>
+          <input matInput type="number" [(ngModel)]="outputValue" disabled>
+          <mat-select [(value)]="outputUnit">
+            <mat-option *ngFor="let unit of weightUnits" [value]="unit">{{ unit }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+  
+    <div class="converter-footer">
+      <button mat-raised-button color="primary" (click)="convert()">Convert</button>
+    </div>
+  </div>
+  
