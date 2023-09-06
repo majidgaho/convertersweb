@@ -32,6 +32,7 @@
             ],
             "styles": [
               "@angular/material/prebuilt-themes/deeppurple-amber.css",
+              "node_modules/tailwindcss/tailwind.css",
               "src/styles.scss"
             ],
             "scripts": [],

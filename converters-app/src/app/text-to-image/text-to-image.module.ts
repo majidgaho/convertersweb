@@ -4,7 +4,9 @@ import { TextToImageComponent } from './text-to-image/text-to-image.component';
 import { FormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-
+import { MatProgressSpinner, MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import {MatGridListModule} from '@angular/material/grid-list';
+import { MaterialExampleModule } from '../material.module';
 
 
 @NgModule({
@@ -14,8 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
   imports: [
     CommonModule,
     FormsModule,
-    MatInputModule,
-    MatButtonModule
+    MaterialExampleModule
   ],
   schemas:[CUSTOM_ELEMENTS_SCHEMA]
 })

@@ -1,7 +1,8 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import axios from 'axios';
 import { executeRequest } from 'src/app/helpers';
-import { TextToImageService } from '../text-to-image.service';
+import { ImageData, TextToImageService } from '../text-to-image.service';
+import { saveAs } from 'file-saver';
 
 @Component({
   selector: 'app-text-to-image',
@@ -15,7 +16,9 @@ export class TextToImageComponent implements OnInit {
   imageSizeOptions!: any;
   imageSize!: string;
   @ViewChild('imagePreview') imagePreviewElementDiv!: ElementRef;
-  showImageArea!: boolean;
+  isLoading!: boolean;
+  isUpscaling!: boolean;
+  images: ImageData[] = [];
 
   constructor(private textToImageService: TextToImageService){
 
@@ -27,7 +30,7 @@ export class TextToImageComponent implements OnInit {
   }
 
   async generateImage() {
-    this.showImageArea = false;
+    this.isLoading = true;
     // this.loading = true;
     // const response = await axios.post('https://api.openai.com/v1/images/generations', {
     //   model: 'image-alpha-001',
@@ -42,15 +45,42 @@ export class TextToImageComponent implements OnInit {
     // });
     // this.loading = false;
     // this.imageUrl = response.data.data[0].url;
-    await executeRequest(`${this.inputText}`, this.imagePreviewElementDiv);
-    this.showImageArea = true;
-    this.imageUrl = this.textToImageService.imageUrl;
+    for(var i=0; i<4; i++){
+      await executeRequest(`${this.inputText}`, this.imagePreviewElementDiv);
+    }
+    
+    this.isLoading = false;
+    console.table(this.textToImageService.getImages());
+    
+    this.images = this.textToImageService.getImages();
     console.log(this.imageUrl);
     
   }
 
   async downloadImage(){
+    // const base64 = this.textToImageService.getImageData().artifactory.getBinary_asB64();
+    // const fileName = `image-${this.textToImageService.getImageData().artifactory.getSeed()}.png`;
+    // this.downloadBase64Image(base64, fileName)
+  }
 
+  downloadBase64Image(base64Data: string, fileName: string) {
+    const byteCharacters = atob(base64Data.replace('data:image/png;base64,', ''));
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/png' });
+    saveAs(blob, fileName);
+  }
+
+  async upscale() {
+    this.isUpscaling = true;
+    // await upscale();
+    this.isUpscaling = false;
+    // this.imageUrl = this.textToImageService.getImageData().imageSrc;
+    console.log(this.imageUrl);
+    
   }
   
 }

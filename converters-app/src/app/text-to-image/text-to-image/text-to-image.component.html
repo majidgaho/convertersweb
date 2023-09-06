@@ -1,99 +1,146 @@
-<!-- <div class="text-to-image-container">
-    <h2 class="text-to-image-title">Text to Image Converter</h2>
-    <mat-form-field appearance="fill">
-      <mat-label>Enter Text</mat-label>
-      <textarea matInput rows="1" [(ngModel)]="inputText" name="inputText" required></textarea>
-      
-    </mat-form-field>
-    <mat-form-field appearance="fill">
-      <mat-label>Image Size</mat-label>
-      <input matInput [(ngModel)]="imageSize" name="imageSize" required>
-    </mat-form-field>
-    <button mat-raised-button color="primary" (click)="generateImage()">Generate Image</button>
-    <div id="imagePreview" class="text-to-image-output">
-      
-    </div>
-  </div>
-   -->
-
-
-   <!-- text-to-image.component.html -->
-<!-- <mat-card>
-  <mat-card-title>Text to Image</mat-card-title>
-  <mat-card-content>
-    <div layout="row">
-      <div flex="50">
-        <mat-form-field  >
-          <textarea matInput [(ngModel)]="inputText"></textarea>
-        </mat-form-field>
-        <button mat-raised-button color="primary" (click)="generateImage()">Generate Image</button>
-      </div>
-      <div flex="50" class="image-preview">
-        <span id="imagePreview"></span>
-        <img #imagePreview [src]="imageUrl" *ngIf="imageUrl">
-        <button mat-raised-button color="accent" (click)="downloadImage()" *ngIf="imageUrl">Download Image</button>
-      </div>
-    </div>
-  </mat-card-content>
-</mat-card> -->
-
-
-
-
-
-<!-- text-to-image.component.html -->
-<!-- <div class="container">
-  <mat-card>
-    <mat-card-content>
-      <h1>Text to Image</h1>
-      <form (ngSubmit)="generateImage()">
-        <mat-form-field>
-          <textarea matInput placeholder="Enter text" name="inputText" [(ngModel)]="inputText"></textarea>
-        </mat-form-field>
-        <button mat-raised-button color="primary" type="submit">Generate</button>
-      </form>
-    </mat-card-content>
-  </mat-card>
-  
-  <div class="image-preview">
-    <span id="imagePreview"></span>
-    <button mat-raised-button color="primary" (click)="downloadImage()">Download Image</button>
-  </div>
-</div> -->
-
-
-<div class="container" fxLayout="row" fxLayout.lt-lg="column" fxLayoutGap.gt-md="1rem">
+<!-- <div class="container" fxLayout="row" fxLayout.lt-lg="column" fxLayoutGap.gt-md="1rem">
   <div class="left" fxFlex="50" fxFlex.lt-md="100">
     <mat-form-field>
       <input matInput placeholder="Enter Prompt here" [(ngModel)]="inputText">
     </mat-form-field>
-    <button mat-raised-button color="primary" (click)="generateImage()">Generate</button>
+    <ng-container *ngIf="!isLoading; else generating">
+      <button mat-raised-button color="primary" (click)="generateImage()">
+        <span>Let's Go</span>
+      </button>
+    </ng-container>
+    <ng-template #generating>
+      <button mat-raised-button disabled>Please Wait...
+        <mat-icon><mat-spinner color="warn" diameter="20">
+          </mat-spinner></mat-icon></button>
+    </ng-template>
   </div>
-  <div class="right" fxFlex="50" fxFlex.lt-md="100" *ngIf="imageUrl">
-    <mat-card class="image-container">
-      <!-- <span id="imagePreview"></span> -->
-      <img [src]="imageUrl" alt="Image Preview">
-      <div class="image-actions" >
-        <button mat-raised-button color="primary">Download</button>
-        <button mat-raised-button color="accent" class="enhance-button">Enhance</button>
+    <div class="image-contianer">
+
+      <div class="right" fxFlex="50" fxFlex.lt-md="100" *ngIf="images.length > 0">
+        <mat-card *ngFor="let image of images">
+          <img [src]="image.imageSrc" alt="Image Preview">
+          <div class="image-actions">
+            <button mat-raised-button color="primary" (click)="downloadImage()">Download</button>
+            <ng-container *ngIf="!isUpscaling; else upscaling">
+              <button mat-raised-button color="accent" (click)="upscale()" class="enhance-button">Upscale</button>
+            </ng-container>
+            <ng-template #upscaling>
+              <button mat-raised-button disabled>Please Wait...
+                <mat-icon><mat-spinner color="warn" diameter="20">
+                  </mat-spinner></mat-icon></button>
+            </ng-template>
+
+          </div>
+        </mat-card>
       </div>
-    </mat-card>
+    </div>
+</div> -->
+
+
+<!-- 
+
+
+<div class="container">
+  <div class="row">
+    <div class="col">
+      <mat-card class="card">
+        <img src="https://via.placeholder.com/300x200" alt="Image Preview" />
+        <div class="actions">
+          <button mat-icon-button>
+            <mat-icon>preview</mat-icon>
+          </button>
+          <button mat-icon-button>
+            <mat-icon>file_download</mat-icon>
+          </button>
+        </div>
+      </mat-card>
+    </div>
+    <div class="col">
+      <mat-card class="card">
+        <img src="https://via.placeholder.com/300x200" alt="Image Preview" />
+        <div class="actions">
+          <button mat-icon-button>
+            <mat-icon>preview</mat-icon>
+          </button>
+          <button mat-icon-button>
+            <mat-icon>file_download</mat-icon>
+          </button>
+        </div>
+      </mat-card>
+    </div>
+    <div class="col">
+      <mat-card class="card">
+        <img src="https://via.placeholder.com/300x200" alt="Image Preview" />
+        <div class="actions">
+          <button mat-icon-button>
+            <mat-icon>preview</mat-icon>
+          </button>
+          <button mat-icon-button>
+            <mat-icon>file_download</mat-icon>
+          </button>
+        </div>
+      </mat-card>
+    </div>
+    <div class="col">
+      <mat-card class="card">
+        <img src="https://via.placeholder.com/300x200" alt="Image Preview" />
+        <div class="actions">
+          <button mat-icon-button>
+            <mat-icon>preview</mat-icon>
+          </button>
+          <button mat-icon-button>
+            <mat-icon>file_download</mat-icon>
+          </button>
+        </div>
+      </mat-card>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <mat-form-field>
+        <input matInput placeholder="Enter Prompt here" [(ngModel)]="inputText" />
+      </mat-form-field>
+      <ng-container *ngIf="!isLoading; else generating">
+        <button mat-raised-button color="primary" (click)="generateImage()">Let's Go</button>
+      </ng-container>
+      <ng-template #generating>
+        <button mat-raised-button disabled>Please Wait...
+          <mat-icon><mat-spinner color="warn" diameter="20"></mat-spinner></mat-icon>
+        </button>
+      </ng-template>
+    </div>
+  </div>
+</div> -->
+
+<div class="container" fxLayout="column" fxLayoutAlign="center center" fxLayoutGap="2rem">
+  <mat-grid-list cols="2" rowHeight="250px" gutterSize="16px">
+    <mat-grid-tile *ngFor="let image of images">
+      <div class="image-container">
+        <img [src]="image.imageSrc" alt="Image Preview">
+        <div class="image-actions">
+          <a [href]="image.imageSrc" download>
+            <mat-icon>get_app</mat-icon>
+          </a>
+        </div>
+      </div>
+    </mat-grid-tile>
+  </mat-grid-list>
+  <div class="form-container">
+    <mat-form-field>
+      <input matInput placeholder="Enter Prompt here" [(ngModel)]="inputText">
+    </mat-form-field>
+    <ng-container *ngIf="!isLoading; else generating">
+      <button mat-raised-button color="primary" (click)="generateImage()">
+        <span>Let's Go</span>
+      </button>
+    </ng-container>
+    <ng-template #generating>
+      <button mat-raised-button disabled>Please Wait...
+        <mat-icon><mat-spinner color="warn" diameter="20">
+          </mat-spinner></mat-icon></button>
+    </ng-template>
   </div>
 </div>
 
 
-  
-<!-- <div fxLayout="row" fxLayout.lt-sm="column">
-  <div fxLayout="column" fxLayoutAlign="start stretch" fxFlex="50%">
-    <mat-form-field>
-      <input matInput [(ngModel)]="inputText" placeholder="Enter your text">
-    </mat-form-field>
-    <button mat-raised-button color="primary" (click)="generateImage()">Generate Image</button>
-  </div>
-  <div fxLayout="column" fxLayoutAlign="center center" fxFlex="50%">
-    <mat-card class="image-container">
-      Image
-    </mat-card>
-  </div>
-</div> -->
 
