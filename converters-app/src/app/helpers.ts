@@ -6,23 +6,42 @@ import {Injector} from '@angular/core'
 
 import { NodeHttpTransport } from "@improbable-eng/grpc-web-node-http-transport";
 import { ElementRef } from "@angular/core";
-import { TextToImageService } from "./text-to-image/text-to-image.service";
+import { ImageData, Images, TextToImageService } from "./text-to-image/text-to-image.service";
 import { AppInjector } from "./app.module";
-const fs = require('./fs');
+import { ArtifactTypeMap, FinishReasonMap } from "../generation/generation_pb";
+
+// Authenticate using your API key, don't commit your key to a public repository!
+const metadata = new GRPCWeb.Metadata();
+
+metadata.set("Authorization", "Bearer sk-JkPSOaColkQ5gcCScuHBD8ZRWhQKNOR4QvjSk8D7FM97e7ZJ");
+
+// Create a generation client to use with all future requests
+const client = new GenerationServiceClient("https://grpc.stability.ai", {});
+
+
+// export function upscale() {
+//   const myService = AppInjector.get(TextToImageService);
+//   const request = buildGenerationRequest("esrgan-v1-x2plus", {
+//     type: "upscaling",
+//     initImage: Buffer.from(myService.getImageData().artifactory.getBinary_asU8()),
+//     upscaler: Generation.Upscaler.UPSCALER_ESRGAN,    
+//   });
+  
+//   executeGenerationRequest(client, request, metadata)
+//     .then(onGenerationComplete)
+//     .catch((error) => {
+//       console.error("Failed to upscale image:", error);
+//     });
+// }
 
 export function executeRequest(text: any, el: ElementRef): Promise<any|void> {
   
   // This is a NodeJS-specific requirement - browsers implementations should omit this line.
 // GRPCWeb.setDefaultTransport(NodeHttpTransport());
 
-// Authenticate using your API key, don't commit your key to a public repository!
-const metadata = new GRPCWeb.Metadata();
-metadata.set("Authorization", "Bearer sk-JkPSOaColkQ5gcCScuHBD8ZRWhQKNOR4QvjSk8D7FM97e7ZJ");
 
-// Create a generation client to use with all future requests
-const client = new GenerationServiceClient("https://grpc.stability.ai", {});
 
-const request = buildGenerationRequest("stable-diffusion-512-v2-1", {
+const request = buildGenerationRequest("stable-diffusion-xl-beta-v2-2-2", {
   type: "text-to-image",
   prompts: [
     {
@@ -44,7 +63,6 @@ return executeGenerationRequest(client, request, metadata)
   });
 }
 
-
 export type GenerationTextPrompt = {
   /** The text prompt, maximum of 2000 characters. */
   text: string;
@@ -54,8 +72,6 @@ export type GenerationTextPrompt = {
 
 export type CommonGenerationParams = {
   prompts: GenerationTextPrompt[];
-  height?: number;
-  width?: number;
   samples?: number;
   steps?: number;
   cfgScale?: number;
@@ -64,39 +80,116 @@ export type CommonGenerationParams = {
   seed?: number;
 };
 
-export type GenerationRequestParams = CommonGenerationParams &
-  (
-    | { type: "text-to-image" }
-    | {
-        type: "image-to-image";
-        initImage: Buffer;
-        stepScheduleStart: number;
-        stepScheduleEnd?: number;
-      }
-    | {
-        type: "image-to-image-masking";
-        initImage: Buffer;
-        maskImage: Buffer;
-      }
-  );
+export type TextToImageParams = CommonGenerationParams & {
+  type: "text-to-image";
+  height?: number;
+  width?: number;
+};
+
+export type ImageToImageParams = CommonGenerationParams & {
+  type: "image-to-image";
+  initImage: Buffer;
+  stepScheduleStart: number;
+  stepScheduleEnd?: number;
+};
+
+export type ImageToImageMaskingParams = CommonGenerationParams & {
+  type: "image-to-image-masking";
+  initImage: Buffer;
+  maskImage: Buffer;
+};
+
+export type UpscalingParams = HeightOrWidth & {
+  type: "upscaling";
+  initImage: Buffer;
+  upscaler: Generation.UpscalerMap[keyof Generation.UpscalerMap];
+};
+
+type HeightOrWidth =
+  | { height: number; width?: never }
+  | { height?: never; width: number }
+  | { height?: never; width?: never };
+
+export type GenerationRequestParams =
+  | TextToImageParams
+  | ImageToImageParams
+  | ImageToImageMaskingParams
+  | UpscalingParams;
 
 export type GenerationRequest = Generation.Request;
-
-export type GenerationResponse = Error | GenerationArtifacts;
-
+export type GenerationResponse = GenerationArtifacts | Error;
 export type GenerationArtifacts = {
-  readonly imageArtifacts: Generation.Artifact[];
-  readonly filteredArtifacts: Generation.Artifact[];
+  /**
+   * Successfully generated artifacts whose binary content is available.
+   */
+  imageArtifacts: Array<ImageArtifact>;
+
+  /**
+   * These artifacts were filtered due to the NSFW classifier.  This classifier is imperfect and
+   * has frequent false-positives. You are not charged for blurred images and are welcome to retry.
+   */
+  filteredArtifacts: Array<NSFWFilteredArtifact>;
 };
+
+export type ImageArtifact = Omit<
+  Generation.Artifact,
+  "hasBinary" | "getType" | "getFinishReason"
+> & {
+  getType(): FinishReasonMap["NULL"];
+  getFinishReason(): ArtifactTypeMap["ARTIFACT_IMAGE"];
+  hasBinary(): true;
+};
+
+export const isImageArtifact = (
+  artifact: Generation.Artifact
+): artifact is ImageArtifact =>
+  artifact.getType() === Generation.ArtifactType.ARTIFACT_IMAGE &&
+  artifact.getFinishReason() === Generation.FinishReason.NULL &&
+  artifact.hasBinary();
+
+/** This represents an artifact whose content was blurred by the NSFW classifier. */
+export type NSFWFilteredArtifact = Omit<
+  Generation.Artifact,
+  "getType" | "getFinishReason"
+> & {
+  getType(): FinishReasonMap["FILTER"];
+  getFinishReason(): ArtifactTypeMap["ARTIFACT_IMAGE"];
+};
+
+export const isNSFWFilteredArtifact = (
+  artifact: Generation.Artifact
+): artifact is NSFWFilteredArtifact =>
+  artifact.getType() === Generation.ArtifactType.ARTIFACT_IMAGE &&
+  artifact.getFinishReason() === Generation.FinishReason.FILTER;
 
 /** Builds a generation request for a specified engine with the specified parameters. */
 export function buildGenerationRequest(
   engineID: string,
   params: GenerationRequestParams
 ): GenerationRequest {
+  if (params.type === "upscaling") {
+    const request = new Generation.Request();
+    request.setEngineId(engineID);
+    request.setRequestedType(Generation.ArtifactType.ARTIFACT_IMAGE);
+    request.setClassifier(new Generation.ClassifierParameters());
+
+    const imageParams = new Generation.ImageParameters();
+    if ("width" in params && !!params.width) {
+      imageParams.setWidth(params.width);
+    } else if ("height" in params && !!params.height) {
+      imageParams.setHeight(params.height);
+    }
+    request.setImage(imageParams);
+    request.addPrompt(createInitImagePrompt(params.initImage));
+
+    return request;
+  }
+
   const imageParams = new Generation.ImageParameters();
-  params.width && imageParams.setWidth(params.width);
-  params.height && imageParams.setHeight(params.height);
+  if (params.type === "text-to-image") {
+    params.width && imageParams.setWidth(params.width);
+    params.height && imageParams.setHeight(params.height);
+  }
 
   // Set the number of images to generate (Default 1)
   params.samples && imageParams.setSamples(params.samples);
@@ -130,6 +223,7 @@ export function buildGenerationRequest(
   //  stable-diffusion-768-v2-1
   //  stable-inpainting-v1-0
   //  stable-inpainting-512-v2-0
+  //  esrgan-v1-x2plus
   const request = new Generation.Request();
   request.setEngineId(engineID);
   request.setRequestedType(Generation.ArtifactType.ARTIFACT_IMAGE);
@@ -164,16 +258,13 @@ export function buildGenerationRequest(
   // that we automatically choose an ancestral sampler for you when CLIP guidance is enabled.
   if (params.clipGuidancePreset) {
     const guidanceParameters = new Generation.GuidanceParameters();
-    guidanceParameters.setGuidancePreset(
-      Generation.GuidancePreset.GUIDANCE_PRESET_FAST_BLUE
-    );
+    guidanceParameters.setGuidancePreset(params.clipGuidancePreset);
     stepParams.setGuidance(guidanceParameters);
   }
 
   imageParams.addParameters(stepParams);
   request.setImage(imageParams);
 
-  // Set our text prompts
   params.prompts.forEach((textPrompt) => {
     const prompt = new Generation.Prompt();
     prompt.setText(textPrompt.text);
@@ -188,7 +279,7 @@ export function buildGenerationRequest(
     request.addPrompt(prompt);
   });
 
-  // Add image prompts if we're doing some kind of image-to-image generation
+  // Add image prompts if we're doing some kind of image-to-image generation or upscaling
   if (params.type === "image-to-image") {
     request.addPrompt(createInitImagePrompt(params.initImage));
   } else if (params.type === "image-to-image-masking") {
@@ -253,19 +344,15 @@ export async function executeGenerationRequest(
 }
 
 function extractArtifacts(answers: Generation.Answer[]): GenerationArtifacts {
-  const filteredArtifacts = new Array<Generation.Artifact>();
-  const imageArtifacts = new Array<Generation.Artifact>();
+  const imageArtifacts = new Array<ImageArtifact>();
+  const filteredArtifacts = new Array<NSFWFilteredArtifact>();
 
   for (const answer of answers) {
     for (const artifact of answer.getArtifactsList()) {
-      if (artifact.getType() === Generation.ArtifactType.ARTIFACT_IMAGE) {
-        if (artifact.getFinishReason() === Generation.FinishReason.FILTER) {
-          // Oh no! We were filtered by the NSFW classifier!
-          filteredArtifacts.push(artifact);
-        } else {
-          // We got an image!
-          imageArtifacts.push(artifact);
-        }
+      if (isImageArtifact(artifact)) {
+        imageArtifacts.push(artifact);
+      } else if (isNSFWFilteredArtifact(artifact)) {
+        filteredArtifacts.push(artifact);
       }
     }
   }
@@ -305,29 +392,47 @@ export function onGenerationComplete(response: GenerationResponse) : any{
       //   `image-${artifact.getSeed()}.png`,
       //   Buffer.from(artifact.getBinary_asB64())
       // );
-      const base64String = artifact.getBinary_asB64();
-const byteCharacters = atob(base64String);
-const byteNumbers = new Array(byteCharacters.length);
+//       const base64String = artifact.getBinary_asB64();
+// const byteCharacters = atob(base64String);
+// const byteNumbers = new Array(byteCharacters.length);
 
-for (let i = 0; i < byteCharacters.length; i++) {
-  byteNumbers[i] = byteCharacters.charCodeAt(i);
-}
+// for (let i = 0; i < byteCharacters.length; i++) {
+//   byteNumbers[i] = byteCharacters.charCodeAt(i);
+// }
 
-const byteArray = new Uint8Array(byteNumbers);
-blob = new Blob([byteArray], { type: 'application/octet-stream' });
-url = URL.createObjectURL(blob);
-const div = document.getElementById('imagePreview');
-const a = document.createElement('img');
+// const byteArray = new Uint8Array(byteNumbers);
+// blob = new Blob([byteArray], { type: 'application/octet-stream' });
+// url = URL.createObjectURL(blob);
+// const div = document.getElementById('imagePreview');
+// const image = document.createElement('img');
 const string = artifact.getBinary_asB64().replace(/https?:\/\/\S+/gi, '');
-a.src = `data:png;base64,${string}`;
-console.log(a.src);
-const myService = AppInjector.get(TextToImageService);
-// const textToImageService: TextToImageService = Inject(TextToImageService);
-myService.setImage(a.src);
+// image.src = `data:png;base64,${string}`;
 
-div?.appendChild(a); 
-// a.download = `image-${artifact.getSeed()}.png`;
-// a.click();
+// const textToImageService: TextToImageService = Inject(TextToImageService);
+// myService.setImage(image.src);
+
+const imagedata: ImageData = {uuid:artifact.getUuid(), artifactory: artifact, imageSrc: `data:png;base64,${string}`};
+const myService = AppInjector.get(TextToImageService);
+let images = myService.getImages();
+if(!images){
+  images = [];
+  images.push(imagedata);
+}else{
+  images.push(imagedata);
+}
+myService.setImages(images);
+
+// div?.appendChild(image); 
+// if(myService.getRequestType() === 'download'){
+//   const a = document.createElement('a');
+//   a.href = url;
+//   a.download = `image-${artifact.getSeed()}.png`;
+//   document.body.appendChild(a);
+//   a.click();
+// }else{
+
+// }
+
 
     } catch (error) {
       console.error("Failed to write resulting image to disk", error);
